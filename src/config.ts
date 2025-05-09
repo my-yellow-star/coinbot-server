@@ -65,6 +65,23 @@ export const config = {
       profitTargetPercentShortTerm: 3.0, // 예: 3.0%
       buyScoreThresholdShortTerm: 80, // 단기 매매는 더 높은 점수 요구 가능
       sellScoreThresholdShortTerm: 65, // RSI 기반 매도 점수
+
+      // 점수 계산 가중치
+      weights: {
+        // 매수 관련
+        emaGoldenCross: 30,
+        bollingerBreakout: 30,
+        volumeSpike: 25,
+        rsiOversold: 20,
+        rsiNeutral: 10, // RSI가 과매도도 과매수도 아닌 적정 범위일 때
+        buySynergy: 15, // 주요 매수 조건 동시 충족 (예: EMA골든크로스 + BB상단돌파 + 거래량급증)
+
+        // 매도 관련 (지표 기반)
+        rsiOverboughtSell: 60, // RSI 과매수 시 기본 매도 고려 점수
+        emaDeadCrossSell: 50, // EMA 데드크로스 시 기본 매도 고려 점수
+        sellSynergyRsiEma: 85, // RSI 과매수 + EMA 데드크로스 시너지 시 강력 매도 점수
+        sellSynergyEmaBbMiddle: 80, // EMA 데드크로스 + BB중단선 하회 시 강력 매도 점수
+      },
     },
   },
   // 추가적인 시스템 설정 (로깅 레벨, 알림 설정 등)

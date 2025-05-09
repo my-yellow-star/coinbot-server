@@ -113,5 +113,24 @@ export interface StrategyConfig {
   profitTargetPercentShortTerm?: number; // 단기 매매용 1차 익절 비율
   buyScoreThresholdShortTerm?: number; // 단기 매매용 매수 결정 점수 임계값
   sellScoreThresholdShortTerm?: number; // 단기 매매용 매도 결정 점수 임계값 (RSI 등 기반)
+  weights?: StrategyWeights; // 점수 계산 가중치
   // ... 기타 필요한 전략 파라미터
+}
+
+// 점수 계산 가중치 타입
+export interface StrategyWeights {
+  // 매수 관련 가중치
+  emaGoldenCross?: number; // EMA 골든크로스
+  bollingerBreakout?: number; // 볼린저밴드 상단 돌파
+  volumeSpike?: number; // 거래량 급증
+  rsiOversold?: number; // RSI 과매도
+  rsiNeutral?: number; // RSI 중립(상승 여력)
+  buySynergy?: number; // 주요 매수 조건 동시 충족 시너지
+
+  // 매도 관련 가중치 (지표 기반)
+  rsiOverboughtSell?: number; // RSI 과매수
+  emaDeadCrossSell?: number; // EMA 데드크로스
+  sellSynergyRsiEma?: number; // RSI 과매수 + EMA 데드크로스 시너지
+  sellSynergyEmaBbMiddle?: number; // EMA 데드크로스 + BB중단 하회 시너지
+  // 필요시 추가 가중치 정의
 }
