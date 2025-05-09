@@ -14,9 +14,9 @@ async function main() {
     console.log("트레이딩 서버가 시작되었습니다.");
 
     // 웹 모니터링 서버 생성 및 시작
-    const webServer = new WebServer(tradingServer, 3000);
+    const webServer = new WebServer(tradingServer, 8080);
     await webServer.start();
-    console.log("웹 모니터링 대시보드: http://localhost:3000");
+    console.log("웹 서버: http://localhost:8080");
 
     // 프로세스 종료 시 서버 정리
     process.on("SIGINT", async () => {

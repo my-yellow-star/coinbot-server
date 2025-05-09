@@ -2,7 +2,7 @@ import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import * as crypto from "crypto-js";
 import { config } from "./config";
-import { Account, Market, Order, Ticker } from "./types";
+import { Account, Market, Order, OrderHistory, Ticker } from "./types";
 
 export class UpbitAPI {
   private readonly accessKey: string;
@@ -163,7 +163,7 @@ export class UpbitAPI {
       limit?: number;
       order_by?: string;
     } = {}
-  ): Promise<any[]> {
+  ): Promise<OrderHistory[]> {
     const url = `${this.baseUrl}/orders/open`;
 
     // 기본값 설정 및 state/states 충돌 처리
@@ -213,7 +213,7 @@ export class UpbitAPI {
       limit?: number;
       order_by?: string;
     } = {}
-  ): Promise<any[]> {
+  ): Promise<OrderHistory[]> {
     const url = `${this.baseUrl}/orders/closed`;
 
     // 기본값 설정 및 state/states 충돌 처리
@@ -258,32 +258,8 @@ export class UpbitAPI {
       return [];
     }
   }
-
-  // 주문 내역 조회 (전체 주문 - 이전 버전과의 호환성 유지)
-  async getOrders(market?: string): Promise<any[]> {
-    try {
-      // 진행 중인 주문과 종료된 주문 모두 가져오기
-      const openOrders = await this.getOpenOrders({ market });
-      const closedOrders = await this.getClosedOrders({ market, limit: 50 });
-
-      // 모든 주문을 합치고 생성 시간 기준으로 내림차순 정렬
-      return [...openOrders, ...closedOrders].sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    } catch (error) {
-      console.error("주문 내역 조회 실패:", error);
-      return [];
-    }
-  }
-
   // 수익률 계산 (기본 구현은 null 반환, 자식 클래스에서 오버라이드 예정)
   getProfitRate(market: string): number | null {
     return null;
-  }
-
-  // 리소스 정리 (기본 구현은 아무것도 하지 않음, 자식 클래스에서 오버라이드 예정)
-  cleanup(): void {
-    // 기본 구현 없음
   }
 }

@@ -8,7 +8,30 @@ export class TradingServer {
   private upbitAPI: UpbitAPI;
   private strategy: TradingStrategy;
   private interval: NodeJS.Timeout | null = null;
-  private targetMarkets: string[] = ["KRW-BTC"]; // 기본 거래 대상 마켓, 원화-비트코인
+  private targetMarkets: string[] = [
+    "KRW-BTC",
+    "KRW-ETH",
+    "KRW-XRP",
+    "KRW-TRUMP",
+    "KRW-DOGE",
+    "KRW-SOL",
+    "KRW-ADA",
+    "KRW-DOT",
+    "KRW-LINK",
+    "KRW-BCH",
+    "KRW-TIA",
+    "KRW-SAFE",
+    "KRW-SUI",
+    "KRW-AAVE",
+    "KRW-BSV",
+    "KRW-NEO",
+    "KRW-ZETA",
+    "KRW-CRO",
+    "KRW-VANA",
+    "KRW-STRAX",
+    "KRW-HBAR",
+    "KRW-XLM",
+  ]; // 기본 거래 대상 마켓, 원화-비트코인
 
   constructor(upbitAPI?: UpbitAPI) {
     this.upbitAPI = upbitAPI || new MockUpbitAPI();
@@ -56,8 +79,14 @@ export class TradingServer {
       try {
         // 전략 실행 및 결과 확인
         const strategyResult = await this.strategy.execute(market);
+        const icon =
+          strategyResult.action === "buy"
+            ? "🟢"
+            : strategyResult.action === "sell"
+            ? "🔴"
+            : "🟡";
         console.log(
-          `[${market}] 전략 결과: ${strategyResult.action} (${strategyResult.reason})`
+          `[${market}] 전략 결과: ${icon} (${strategyResult.reason})`
         );
 
         // 매수 또는 매도 신호가 있을 경우 주문 실행
@@ -65,13 +94,10 @@ export class TradingServer {
           const order: Order = {
             market,
             side: "bid",
-            volume: strategyResult.volume?.toString(),
-            price: strategyResult.price?.toString(),
+            volume: strategyResult.volume.toString(),
+            price: strategyResult.price.toString(),
             ord_type: "price",
           };
-
-          // 시장가 매수는 price 사용, volume 생략
-          delete order.volume;
 
           console.log(`[${market}] 매수 주문 생성 중... (${order.price} KRW)`);
           const result = await this.upbitAPI.createOrder(order);
@@ -80,8 +106,9 @@ export class TradingServer {
           const order: Order = {
             market,
             side: "ask",
-            volume: strategyResult.volume?.toString(),
-            ord_type: "market",
+            volume: strategyResult.volume.toString(),
+            price: strategyResult.price.toString(),
+            ord_type: "price",
           };
 
           console.log(
@@ -93,6 +120,7 @@ export class TradingServer {
       } catch (error) {
         console.error(`[${market}] 거래 주기 실행 중 오류:`, error);
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 

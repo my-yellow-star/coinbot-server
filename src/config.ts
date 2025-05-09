@@ -15,5 +15,6 @@ export const config = {
     interval: parseInt(process.env.INTERVAL || "60000"), // 봇 실행 간격 (밀리초)
     profitRate: parseFloat(process.env.PROFIT_RATE || "1.03"), // 목표 수익률
     stopLossRate: parseFloat(process.env.STOP_LOSS_RATE || "0.95"), // 손절 비율
+    printStrategy: process.env.PRINT_STRATEGY === "true", // 전략 출력 여부
   },
 };

@@ -41,11 +41,11 @@ export class MockUpbitAPI extends UpbitAPI {
   async getAccounts(): Promise<Account[]> {
     return this.mockBalances.map((balance) => ({
       currency: balance.currency,
-      balance: balance.balance.toString(),
-      locked: balance.locked.toString(),
-      avg_buy_price: balance.avg_buy_price.toString(),
+      balance: `${balance.balance}`,
+      locked: `${balance.locked}`,
+      avg_buy_price: `${balance.avg_buy_price}`,
       avg_buy_price_modified: false,
-      unit_currency: balance.currency === "KRW" ? "KRW" : "KRW",
+      unit_currency: "KRW",
     }));
   }
 
@@ -80,17 +80,7 @@ export class MockUpbitAPI extends UpbitAPI {
       if (order.side === "bid") {
         // 매수 주문
         let orderPrice = price;
-        let orderVolume = 0;
-
-        if (order.ord_type === "price") {
-          // 시장가 매수: 가격으로 주문
-          const currentPrice = this.mockTickers[market];
-          orderVolume = price / currentPrice;
-          orderPrice = currentPrice;
-        } else {
-          // 지정가 매수
-          orderVolume = volume;
-        }
+        let orderVolume = volume;
 
         // KRW 잔고 확인
         const krwBalance = this.mockBalances.find((b) => b.currency === "KRW");
@@ -111,7 +101,12 @@ export class MockUpbitAPI extends UpbitAPI {
             coinBalance.balance * coinBalance.avg_buy_price +
             orderPrice * orderVolume;
           const totalVolume = coinBalance.balance + orderVolume;
-          coinBalance.avg_buy_price = totalValue / totalVolume;
+          // NaN 방지를 위한 검증
+          if (totalVolume > 0) {
+            coinBalance.avg_buy_price = totalValue / totalVolume;
+          } else {
+            coinBalance.avg_buy_price = orderPrice;
+          }
           coinBalance.balance += orderVolume;
         } else {
           // 새 코인 추가
@@ -124,7 +119,8 @@ export class MockUpbitAPI extends UpbitAPI {
         }
       } else if (order.side === "ask") {
         // 매도 주문
-        const currentPrice = this.mockTickers[market];
+        const currentPrice =
+          this.mockTickers[market] || parseFloat(order.price);
         const orderVolume = volume;
 
         // 코인 잔고 확인
@@ -151,17 +147,23 @@ export class MockUpbitAPI extends UpbitAPI {
         uuid: uuidv4(),
         market: order.market,
         side: order.side,
-        price: parseFloat(order.price || this.mockTickers[market].toString()),
+        price: parseFloat(
+          order.price || this.mockTickers[market]?.toString() || "0"
+        ),
         volume:
           order.side === "bid"
             ? order.ord_type === "price"
-              ? price / this.mockTickers[market]
+              ? this.mockTickers[market] <= 0
+                ? 0
+                : price / this.mockTickers[market]
               : parseFloat(order.volume || "0")
             : parseFloat(order.volume || "0"),
         executed_volume:
           order.side === "bid"
             ? order.ord_type === "price"
-              ? price / this.mockTickers[market]
+              ? this.mockTickers[market] <= 0
+                ? 0
+                : price / this.mockTickers[market]
               : parseFloat(order.volume || "0")
             : parseFloat(order.volume || "0"),
         created_at: new Date().toISOString(),
@@ -235,8 +237,27 @@ export class MockUpbitAPI extends UpbitAPI {
       return null;
     }
 
+    // 현재가가 없는 경우 API 호출하여 가져오기
+    if (!this.mockTickers[market] || this.mockTickers[market] <= 0) {
+      try {
+        super.getTicker(market).then((tickerResponse) => {
+          if (tickerResponse && tickerResponse.length > 0) {
+            this.mockTickers[market] = tickerResponse[0].trade_price;
+          }
+        });
+      } catch (error) {
+        console.error(`수익률 계산 시 현재가 조회 실패: ${market}`, error);
+        return null;
+      }
+    }
+
     const currentPrice = this.mockTickers[market];
     const avgBuyPrice = coinBalance.avg_buy_price;
+
+    // 분모가 0인 경우 체크
+    if (!avgBuyPrice || avgBuyPrice <= 0) {
+      return null;
+    }
 
     return currentPrice / avgBuyPrice - 1; // 수익률 (1.2 = 20% 수익)
   }
