@@ -1,8 +1,8 @@
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import * as crypto from "crypto-js";
-import { config } from "./config";
-import { Account, Market, Order, OrderHistory, Ticker } from "./types";
+import { config } from "../config";
+import { Account, Market, Order, OrderHistory, Ticker } from "../types";
 import jwt from "jsonwebtoken";
 
 export class UpbitAPI {
@@ -252,7 +252,13 @@ export class UpbitAPI {
     }
   }
   // 수익률 계산 (기본 구현은 null 반환, 자식 클래스에서 오버라이드 예정)
-  getProfitRate(market: string): number | null {
+  async getProfitRate(market: string): Promise<number | null> {
+    // 이 기본 클래스에서는 실제 수익률 계산 로직을 구현하기 어려움
+    // (계좌 정보, 현재가 정보 등을 모두 가져와야 함)
+    // MockUpbitAPI나 실제 API를 사용하는 서비스 레이어에서 구현하는 것이 적합
+    console.warn(
+      "UpbitAPI.getProfitRate는 기본 구현에서 null을 반환합니다. MockUpbitAPI 또는 서비스 로직에서 구체적으로 구현해야 합니다."
+    );
     return null;
   }
 }

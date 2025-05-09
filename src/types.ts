@@ -40,7 +40,7 @@ export interface OrderHistory {
   side: "bid" | "ask";
   ord_type: "limit" | "price" | "market" | "best";
   price: string; // 주문 당시 화폐 가격
-  state: "wait" | "watch";
+  state: "done" | "cancel";
   market: string;
   created_at: string;
   volume: string;
@@ -66,6 +66,52 @@ export interface Trade {
 export interface StrategyResult {
   action: "buy" | "sell" | "hold";
   market: string;
-  score: number;
+  score?: number; // 점수 (매수/매도 결정 강도 등)
   reason: string;
+  price?: number; // 주문 실행 시 제안 가격 (지정가 등)
+  volume?: number; // 주문 실행 시 제안 수량
+}
+
+// 포지션 정보 타입
+export interface Position {
+  market: string; // 마켓 코드 (예: "KRW-BTC")
+  entryPrice: number; // 진입 가격
+  volume: number; // 보유 수량
+  timestamp?: string; // 진입 시간 (ISO 문자열)
+  // 필요한 경우 추가 정보: 현재가, 평가금액, 수익률 등
+}
+
+// 캔들 데이터 타입 (Upbit API 응답 기준)
+// getMinuteCandles 응답이 any[]로 되어 있어, 좀 더 구체적인 타입 정의
+export interface CandleData {
+  market: string; // 마켓명
+  candle_date_time_utc: string; // 캔들 기준 시각 (UTC 기준)
+  candle_date_time_kst: string; // 캔들 기준 시각 (KST 기준)
+  opening_price: number; // 시가
+  high_price: number; // 고가
+  low_price: number; // 저가
+  trade_price: number; // 종가
+  timestamp: number; // 해당 _캔들의_ 마지막_티커_시간(ms)
+  candle_acc_trade_price: number; // 누적 거래 금액
+  candle_acc_trade_volume: number; // 누적 거래량
+  unit: number; // 분 단위 (유닛)
+}
+
+// SignalGenerator에서 사용할 수 있는 전략 설정 타입
+export interface StrategyConfig {
+  bollingerPeriod?: number;
+  bollingerStdDev?: number;
+  emaShortPeriod?: number;
+  emaLongPeriod?: number;
+  emaMidPeriod?: number; // 중기 EMA 기간
+  rsiPeriod?: number;
+  rsiOverboughtThreshold?: number;
+  rsiOversoldThreshold?: number;
+  volumeSpikeMultiplier?: number; // 거래량 급증 기준 배수
+  buyScoreThreshold?: number; // 매수 결정 최소 점수
+  stopLossPercentShortTerm?: number; // 단기 매매용 손절 비율
+  profitTargetPercentShortTerm?: number; // 단기 매매용 1차 익절 비율
+  buyScoreThresholdShortTerm?: number; // 단기 매매용 매수 결정 점수 임계값
+  sellScoreThresholdShortTerm?: number; // 단기 매매용 매도 결정 점수 임계값 (RSI 등 기반)
+  // ... 기타 필요한 전략 파라미터
 }
