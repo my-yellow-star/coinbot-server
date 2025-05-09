@@ -16,7 +16,7 @@ export const config = {
   },
   trading: {
     // 기존 설정 유지 또는 새로운 퍼센트 기반으로 변경
-    tradeAmount: 5000, // 1회 기본 거래 금액 (KRW), 최소 주문 금액 이상이어야 함.
+    tradeAmount: 5200, // 1회 기본 거래 금액 (KRW), 최소 주문 금액 이상이어야 함.
     useBalancePercentage: false, // KRW 잔액의 %를 투자할지 여부
     balancePercentageToInvest: 10, // 투자할 잔액 비율 (%)
 

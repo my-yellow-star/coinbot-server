@@ -34,6 +34,11 @@ export class OrderExecutor {
           config.upbit.volumePrecision
         )
       );
+      if (volume <= 0) {
+        throw new Error(
+          `[${market}] 계산된 매수 수량(${volume})이 0보다 작거나 같습니다.`
+        );
+      }
       if (volume * executionPrice < config.upbit.minOrderAmountKRW) {
         console.warn(
           `[${market}] 계산된 지정가 매수 총액(${
@@ -42,22 +47,25 @@ export class OrderExecutor {
             config.upbit.minOrderAmountKRW
           } KRW)보다 작습니다.`
         );
-        // 이 경우 주문을 넣지 않거나, investmentAmount를 minOrderAmountKRW로 조정하여 재계산하는 등의 처리 가능
-        // 여기서는 에러를 발생시키거나 null을 반환하여 상위에서 처리하도록 유도
-        throw new Error(`[${market}] 지정가 매수 주문 총액이 너무 작습니다.`);
+        // 이 경우 investmentAmount를 minOrderAmountKRW로 조정하여 재계산
+        orderData = {
+          market,
+          side: "bid",
+          volume: (config.upbit.minOrderAmountKRW / executionPrice).toFixed(
+            config.upbit.volumePrecision
+          ),
+          price: config.upbit.minOrderAmountKRW.toString(),
+          ord_type: "limit",
+        };
+      } else {
+        orderData = {
+          market,
+          side: "bid",
+          volume: volume.toString(),
+          price: executionPrice.toString(),
+          ord_type: "limit",
+        };
       }
-      if (volume <= 0) {
-        throw new Error(
-          `[${market}] 계산된 매수 수량(${volume})이 0보다 작거나 같습니다.`
-        );
-      }
-      orderData = {
-        market,
-        side: "bid",
-        volume: volume.toString(),
-        price: executionPrice.toString(),
-        ord_type: "limit",
-      };
       console.log(
         `[${market}] 지정가 매수 주문 생성 중... (수량: ${volume}, 가격: ${executionPrice} KRW, 총액 약 ${(
           volume * executionPrice
