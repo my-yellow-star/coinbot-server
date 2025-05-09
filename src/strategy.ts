@@ -7,8 +7,6 @@ export class TradingStrategy {
   private positions: Map<string, { entryPrice: number; volume: number }> =
     new Map();
   private readonly FEE_RATE = 0.0005; // 업비트 수수료 0.05%
-  private readonly SLIPPAGE_RATE = 0.0001; // 슬리피지 0.01%
-  private readonly RISK_PERCENTAGE = 0.05; // 계좌 잔액의 5% 사용
 
   constructor(upbitAPI: UpbitAPI) {
     this.upbitAPI = upbitAPI;
@@ -43,8 +41,7 @@ export class TradingStrategy {
         return {
           action: "hold",
           market,
-          price: 0,
-          volume: 0,
+          score: 0,
           reason: "충분한 캔들 데이터가 없습니다.",
         };
       }
@@ -161,18 +158,9 @@ export class TradingStrategy {
           emaUptrend &&
           isVolumeIncreased)
       ) {
-        // 계좌 잔액의 일부를 사용 (리스크 관리)
-        const riskPercentage = this.RISK_PERCENTAGE;
-
-        // 슬리피지 고려 (마진)
-        const slippageAdjustedPrice = currentPrice * (1 + this.SLIPPAGE_RATE);
-
         // 매수 수량을 예측하기 위한 값만 계산
         const buyVolume = Number(
-          (
-            (config.trading.tradeAmount * riskPercentage) /
-            slippageAdjustedPrice
-          ).toFixed(8)
+          (config.trading.tradeAmount / currentPrice).toFixed(4)
         );
 
         let buyReason = "";
@@ -188,13 +176,12 @@ export class TradingStrategy {
 
         // 이 부분에서는 실제 주문을 생성하지 않고, 매수 포지션만 미리 추가
         // (최종 주문은 server.ts에서 실행)
-        this.addPosition(market, slippageAdjustedPrice, buyVolume);
+        this.addPosition(market, currentPrice, buyVolume);
 
         return {
           action: "buy",
           market,
-          price: slippageAdjustedPrice,
-          volume: buyVolume,
+          score: buyScore,
           reason: buyReason,
         };
       }
@@ -202,16 +189,14 @@ export class TradingStrategy {
       // 추가: 볼린저 밴드 하단 지지 매수 전략 (추가 시나리오)
       if (lowerBreakout && emaUptrend && isVolumeIncreased) {
         // 하단 지지 매수 신호
-        const slippageAdjustedPrice = currentPrice * (1 + this.SLIPPAGE_RATE);
         const buyVolume = 1.0; // 예시 수량
 
-        this.addPosition(market, slippageAdjustedPrice, buyVolume);
+        this.addPosition(market, currentPrice, buyVolume);
 
         return {
           action: "buy",
           market,
-          price: slippageAdjustedPrice,
-          volume: buyVolume,
+          score: buyScore,
           reason:
             "시나리오 4: 볼린저 하단 돌파 + EMA 상승추세 + 거래량 증가 (지지선 매수)",
         };
@@ -229,8 +214,7 @@ export class TradingStrategy {
           return {
             action: "sell",
             market,
-            price: currentPrice,
-            volume,
+            score: profitRate,
             reason: `익절 조건 충족: +${(profitRate * 100).toFixed(
               2
             )}% (매수가: ${entryPrice}, 현재가: ${currentPrice}, 수수료 고려)`,
@@ -243,8 +227,7 @@ export class TradingStrategy {
           return {
             action: "sell",
             market,
-            price: currentPrice,
-            volume,
+            score: buyScore,
             reason: `손절 조건 충족: ${(profitRate * 100).toFixed(
               2
             )}% (매수가: ${entryPrice}, 현재가: ${currentPrice}, 수수료 고려)`,
@@ -255,8 +238,7 @@ export class TradingStrategy {
         return {
           action: "hold",
           market,
-          price: 0,
-          volume: 0,
+          score: buyScore,
           reason: `보유 중: 수익률 ${(profitRate * 100).toFixed(
             2
           )}% (매수가: ${entryPrice}, 현재가: ${currentPrice})`,
@@ -267,8 +249,7 @@ export class TradingStrategy {
       return {
         action: "hold",
         market,
-        price: 0,
-        volume: 0,
+        score: buyScore,
         reason: "매매 신호가 발생하지 않았습니다.",
       };
     } catch (error) {
@@ -276,8 +257,7 @@ export class TradingStrategy {
       return {
         action: "hold",
         market,
-        price: 0,
-        volume: 0,
+        score: 0,
         reason: `전략 실행 오류: ${
           error instanceof Error ? error.message : String(error)
         }`,

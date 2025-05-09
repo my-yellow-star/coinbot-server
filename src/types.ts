@@ -29,8 +29,8 @@ export interface Ticker {
 export interface Order {
   market: string;
   side: "bid" | "ask"; // bid: 매수, ask: 매도
-  volume: string | null; // null: 최유리 주문
-  price: string;
+  volume?: string | null; // null: 최유리 주문
+  price?: string;
   ord_type: "limit" | "price" | "market" | "best"; // limit: 지정가, price: 시장가(매수), market: 시장가(매도), best: 최유리
   time_in_force?: "ioc" | "fok"; // best 주문 시 필수 필드, ioc: 즉시체결 + 잔량 취소, fok: 전체체결, 그렇지 않으면 취소
 }
@@ -66,7 +66,6 @@ export interface Trade {
 export interface StrategyResult {
   action: "buy" | "sell" | "hold";
   market: string;
-  price: number;
-  volume: number;
+  score: number;
   reason: string;
 }

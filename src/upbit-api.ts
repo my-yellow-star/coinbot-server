@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as crypto from "crypto-js";
 import { config } from "./config";
 import { Account, Market, Order, OrderHistory, Ticker } from "./types";
+import jwt from "jsonwebtoken";
 
 export class UpbitAPI {
   private readonly accessKey: string;
@@ -41,18 +42,10 @@ export class UpbitAPI {
       payload.query_hash_alg = "SHA512";
     }
 
-    // JWT 토큰 페이로드 생성 (Base64 인코딩)
-    const payloadString = Buffer.from(JSON.stringify(payload)).toString(
-      "base64"
-    );
-
-    // 서명 생성 (HMAC-SHA256)
-    const signature = crypto
-      .HmacSHA256(payloadString, this.secretKey)
-      .toString(crypto.enc.Hex);
+    const jwtToken = jwt.sign(payload, this.secretKey);
 
     // Bearer 토큰 형식으로 리턴
-    return `Bearer ${this.accessKey}.${payloadString}.${signature}`;
+    return `Bearer ${jwtToken}`;
   }
 
   // 전체 계좌 조회

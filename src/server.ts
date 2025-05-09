@@ -12,25 +12,14 @@ export class TradingServer {
     "KRW-BTC",
     "KRW-ETH",
     "KRW-XRP",
-    "KRW-TRUMP",
-    "KRW-DOGE",
     "KRW-SOL",
     "KRW-ADA",
-    "KRW-DOT",
-    "KRW-LINK",
+    "KRW-DOGE",
+    "KRW-TRUMP",
+    "KRW-BERA",
     "KRW-BCH",
-    "KRW-TIA",
-    "KRW-SAFE",
-    "KRW-SUI",
+    "KRW-AVAX",
     "KRW-AAVE",
-    "KRW-BSV",
-    "KRW-NEO",
-    "KRW-ZETA",
-    "KRW-CRO",
-    "KRW-VANA",
-    "KRW-STRAX",
-    "KRW-HBAR",
-    "KRW-XLM",
   ]; // 기본 거래 대상 마켓, 원화-비트코인
 
   constructor(upbitAPI?: UpbitAPI) {
@@ -94,8 +83,7 @@ export class TradingServer {
           const order: Order = {
             market,
             side: "bid",
-            volume: strategyResult.volume.toString(),
-            price: strategyResult.price.toString(),
+            price: config.trading.tradeAmount.toString(),
             ord_type: "price",
           };
 
@@ -106,9 +94,8 @@ export class TradingServer {
           const order: Order = {
             market,
             side: "ask",
-            volume: strategyResult.volume.toString(),
-            price: strategyResult.price.toString(),
-            ord_type: "price",
+            ord_type: "best",
+            time_in_force: "ioc",
           };
 
           console.log(

@@ -120,7 +120,7 @@ export class MockUpbitAPI extends UpbitAPI {
       } else if (order.side === "ask") {
         // 매도 주문
         const currentPrice =
-          this.mockTickers[market] || parseFloat(order.price);
+          this.mockTickers[market] || parseFloat(order.price || "0");
         const orderVolume = volume;
 
         // 코인 잔고 확인

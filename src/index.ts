@@ -5,16 +5,16 @@ import { UpbitAPI } from "./upbit-api";
 async function main() {
   try {
     // UpbitAPI 인스턴스 생성
-    // const upbitAPI = new UpbitAPI();
-    const upbitAPI = new MockUpbitAPI();
+    const upbitAPI = new UpbitAPI();
+    // const upbitAPI = new MockUpbitAPI();
 
     // 트레이딩 서버 생성 및 시작
     const tradingServer = new TradingServer(upbitAPI);
-    await tradingServer.start();
-    console.log("트레이딩 서버가 시작되었습니다.");
+    // await tradingServer.start();
+    // console.log("트레이딩 서버가 시작되었습니다.");
 
     // 웹 모니터링 서버 생성 및 시작
-    const webServer = new WebServer(tradingServer, 8080);
+    const webServer = new WebServer(tradingServer, 8080, new UpbitAPI());
     await webServer.start();
     console.log("웹 서버: http://localhost:8080");
 
