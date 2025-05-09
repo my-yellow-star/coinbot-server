@@ -126,9 +126,9 @@ export class WebServer {
         const accounts = await this.upbitAPI.getAccounts();
 
         // 마켓 정보 (KRW 마켓만)
-        const markets = (await this.upbitAPI.getMarkets())
-          .filter((market) => market.market.startsWith("KRW-"))
-          .slice(0, 50);
+        const markets = (await this.upbitAPI.getMarkets()).filter((market) =>
+          market.market.startsWith("KRW-")
+        );
 
         // 현재가 정보
         const marketCodes = markets.map((m) => m.market).join(",");
