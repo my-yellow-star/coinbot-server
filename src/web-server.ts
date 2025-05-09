@@ -8,6 +8,7 @@ import { UpbitAPI } from "./api/upbit-api";
 import { DataManager } from "./core/data-manager";
 import { PortfolioManager } from "./core/portfolio-manager";
 import { OrderHistory } from "./types";
+import signalRoutes from "./routes/signal.routes";
 
 export class WebServer {
   private app: express.Application;
@@ -269,6 +270,9 @@ export class WebServer {
         res.status(500).json({ error: errorMessage });
       }
     }) as RequestHandler);
+
+    // 새로운 시그널 API 라우트 추가
+    this.app.use("/api/signals", signalRoutes);
   }
 
   // 서버 시작

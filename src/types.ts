@@ -134,3 +134,20 @@ export interface StrategyWeights {
   sellSynergyEmaBbMiddle?: number; // EMA 데드크로스 + BB중단 하회 시너지
   // 필요시 추가 가중치 정의
 }
+
+export interface SignalLog {
+  timestamp: string; // ISO 8601 형식
+  market: string;
+  action: "buy" | "sell" | "hold";
+  price?: number; // 매수 또는 매도 결정 시의 가격
+  score: number;
+  reason: string;
+  // 필요에 따라 추가 지표 값 등
+  // indicators?: {
+  //   rsi?: number;
+  //   bollingerBands?: { upper: number; middle: number; lower: number };
+  //   emaShort?: number;
+  //   emaMid?: number;
+  //   emaLong?: number;
+  // };
+}

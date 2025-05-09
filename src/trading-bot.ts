@@ -10,6 +10,8 @@ import { SignalGenerator } from "./core/signal-generator";
 import { RiskManager } from "./core/risk-manager";
 import { OrderExecutor } from "./core/order-executor";
 import { TradingStrategyOrchestrator } from "./strategy"; // 이전 strategy.ts가 리팩토링된 파일
+import { addSignalLog } from "./services/signalLog.service"; // addSignalLog 임포트
+import { SignalLog, StrategyResult } from "./types"; // SignalLog, StrategyResult 임포트
 
 export class TradingBot {
   private upbitAPI: UpbitAPI;
@@ -105,9 +107,21 @@ export class TradingBot {
 
     for (const market of this.targetMarkets) {
       try {
-        const signal = await this.strategyOrchestrator.determineSignalForMarket(
-          market
-        );
+        const signal: StrategyResult =
+          await this.strategyOrchestrator.determineSignalForMarket(market);
+
+        // 신호 로깅 추가
+        const signalLogEntry: SignalLog = {
+          timestamp: new Date().toISOString(),
+          market: signal.market,
+          action: signal.action,
+          price: signal.price, // StrategyResult에 price가 있을 경우 사용
+          score: signal.score || 0, // score가 undefined일 경우 0으로 설정
+          reason: signal.reason,
+        };
+        await addSignalLog(signalLogEntry);
+        // 로깅 후 기존 로직 진행
+
         const currentPrice =
           signal.price ||
           (await this.dataManager.getTicker(market))?.[0]?.trade_price;
