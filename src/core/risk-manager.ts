@@ -26,17 +26,48 @@ export class RiskManager {
   determineInvestmentAmountForBuy(
     market: string,
     signal: StrategyResult, // signal.price 에 매수 희망 가격(현재가) 포함 가정
-    krwBalance: number
+    krwBalance: number,
+    currentEntryPrice?: number, // 분할매수 시 현재 포지션의 평균단가
+    currentVolume?: number // 분할매수 시 현재 포지션의 보유량
   ): number | null {
-    let investmentAmount = config.trading.tradeAmount; // 고정 금액 투자
+    let investmentAmount = 0;
+    const isPyramiding = signal.reason.includes("[분할매수]");
 
-    if (config.trading.useBalancePercentage) {
-      const calculatedAmount =
-        krwBalance * (config.trading.balancePercentageToInvest / 100);
-      // 잔액 비율로 계산된 금액이 설정된 tradeAmount보다 작으면 tradeAmount 사용 (최소 투자금액 역할)
-      // 또는 tradeAmount를 무시하고 비율 기반 금액만 사용하도록 정책 결정 가능
-      investmentAmount = Math.max(calculatedAmount, config.trading.tradeAmount);
-      // 혹은 investmentAmount = calculatedAmount; 로 하고, 아래 minOrderAmountKRW 에서만 체크
+    if (isPyramiding) {
+      // 분할 매수 로직
+      if (currentEntryPrice && currentVolume && currentVolume > 0) {
+        // 예시: 첫 매수 금액(config.trading.tradeAmount) 기준으로 pyramidingOrderSizeRatio 만큼 투자
+        // 또는 현재 포지션 가치 (currentEntryPrice * currentVolume)의 일정 비율 등 다양한 방식 가능
+        // 여기서는 단순하게 첫 매수 기준 금액을 따름
+        investmentAmount =
+          config.trading.tradeAmount *
+          (config.trading.defaultStrategyConfig.pyramidingOrderSizeRatio ||
+            1.0);
+        console.log(
+          `[${market}] 분할매수 투자금액 계산: ${investmentAmount.toFixed(
+            0
+          )} KRW (기준금액: ${config.trading.tradeAmount}, 비율: ${
+            config.trading.defaultStrategyConfig.pyramidingOrderSizeRatio || 1.0
+          })`
+        );
+      } else {
+        console.warn(
+          `[${market}] 분할매수 신호이나, 현재 포지션 정보(평균단가/수량) 부족으로 투자금액 계산 불가. 신규 매수 로직으로 fallback.`
+        );
+        // fallback 또는 오류 처리
+        investmentAmount = config.trading.tradeAmount; // 고정 금액 투자 (신규 매수와 동일하게 처리)
+      }
+    } else {
+      // 신규 매수 로직
+      investmentAmount = config.trading.tradeAmount; // 고정 금액 투자
+      if (config.trading.useBalancePercentage) {
+        const calculatedAmount =
+          krwBalance * (config.trading.balancePercentageToInvest / 100);
+        investmentAmount = Math.max(
+          calculatedAmount,
+          config.trading.tradeAmount
+        );
+      }
     }
 
     if (investmentAmount > krwBalance) {

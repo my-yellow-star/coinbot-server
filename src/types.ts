@@ -78,6 +78,7 @@ export interface Position {
   entryPrice: number; // 진입 가격
   volume: number; // 보유 수량
   timestamp?: string; // 진입 시간 (ISO 문자열)
+  pyramidingCount?: number; // 해당 포지션에 대해 실행된 분할 매수 횟수
   // 필요한 경우 추가 정보: 현재가, 평가금액, 수익률 등
 }
 
@@ -108,11 +109,24 @@ export interface StrategyConfig {
   rsiOverboughtThreshold?: number;
   rsiOversoldThreshold?: number;
   volumeSpikeMultiplier?: number; // 거래량 급증 기준 배수
-  buyScoreThreshold?: number; // 매수 결정 최소 점수
+  buyScoreThreshold?: number; // 매수 결정 최소 점수 (사용처 확인 필요, ShortTerm과 중복 가능성)
   stopLossPercentShortTerm?: number; // 단기 매매용 손절 비율
   profitTargetPercentShortTerm?: number; // 단기 매매용 1차 익절 비율
   buyScoreThresholdShortTerm?: number; // 단기 매매용 매수 결정 점수 임계값
   sellScoreThresholdShortTerm?: number; // 단기 매매용 매도 결정 점수 임계값 (RSI 등 기반)
+
+  // MACD 관련 파라미터
+  macdShortPeriod?: number;
+  macdLongPeriod?: number;
+  macdSignalPeriod?: number;
+
+  // 분할 매수 (Pyramiding/Averaging Down) 관련 파라미터
+  allowPyramiding?: boolean; // 분할 매수 허용 여부
+  maxPyramidingCount?: number; // 최대 분할 매수 횟수
+  pyramidingConditionDropPercent?: number; // 추가 매수 조건: 기준가(첫매수가 또는 직전 분할매수가) 대비 하락률 (%)
+  pyramidingRsiCondition?: { below?: number; above?: number }; // 추가 매수 조건: RSI 값 범위 (예: below: 35)
+  pyramidingOrderSizeRatio?: number; // 추가 매수 시 주문량 비율 (첫 매수량 대비 또는 현재 보유량 대비)
+
   weights?: StrategyWeights; // 점수 계산 가중치
   // ... 기타 필요한 전략 파라미터
 }
@@ -125,13 +139,20 @@ export interface StrategyWeights {
   volumeSpike?: number; // 거래량 급증
   rsiOversold?: number; // RSI 과매도
   rsiNeutral?: number; // RSI 중립(상승 여력)
+  buyMacdGoldenCross?: number; // MACD 골든크로스 (MACD선 > 시그널선)
+  buyMacdHistogramPositive?: number; // MACD 히스토그램 양전환 또는 증가
   buySynergy?: number; // 주요 매수 조건 동시 충족 시너지
 
   // 매도 관련 가중치 (지표 기반)
   rsiOverboughtSell?: number; // RSI 과매수
   emaDeadCrossSell?: number; // EMA 데드크로스
+  sellMacdDeadCross?: number; // MACD 데드크로스 (MACD선 < 시그널선)
+  sellMacdHistogramNegative?: number; // MACD 히스토그램 음전환 또는 감소
   sellSynergyRsiEma?: number; // RSI 과매수 + EMA 데드크로스 시너지
   sellSynergyEmaBbMiddle?: number; // EMA 데드크로스 + BB중단 하회 시너지
+
+  // 분할매수 신호 발생 시 추가 점수 (선택적)
+  pyramidingSignalBoost?: number;
   // 필요시 추가 가중치 정의
 }
 

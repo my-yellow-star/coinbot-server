@@ -83,7 +83,8 @@ export class PortfolioManager {
     market: string,
     체결가격: number,
     체결수량: number,
-    사용된KRW: number
+    사용된KRW: number,
+    isPyramidingBuy?: boolean
   ): void {
     const existingPosition = this.positions.get(market);
     if (existingPosition) {
@@ -96,12 +97,21 @@ export class PortfolioManager {
       existingPosition.entryPrice = newEntryPrice;
       existingPosition.volume = totalVolume;
       existingPosition.timestamp = new Date().toISOString();
+      if (isPyramidingBuy) {
+        existingPosition.pyramidingCount =
+          (existingPosition.pyramidingCount || 0) + 1;
+        console.log(
+          `[${market}] 분할매수 실행. 현재 분할매수 횟수: ${existingPosition.pyramidingCount}`
+        );
+      }
     } else {
+      // 신규 매수
       this.positions.set(market, {
         market,
         entryPrice: 체결가격,
         volume: 체결수량,
         timestamp: new Date().toISOString(),
+        pyramidingCount: isPyramidingBuy ? 1 : 0, // 신규매수면서 분할매수 플래그가 (잘못) 넘어온 경우도 고려
       });
     }
     this.krwBalance -= 사용된KRW;

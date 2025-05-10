@@ -384,25 +384,19 @@ export class MockUpbitAPI extends UpbitAPI {
         if (krwAccount.balance < orderPrice * orderVolume * (1 + feeRate))
           throw new Error("KRW 잔고 부족 (수수료 포함)");
 
-        if (currentMarketPrice <= orderPrice) {
-          executed_volume = orderVolume;
-          executed_funds = orderPrice * executed_volume;
-          paid_fee = executed_funds * feeRate;
-          avg_price = orderPrice;
+        executed_volume = orderVolume;
+        executed_funds = orderPrice * executed_volume;
+        paid_fee = executed_funds * feeRate;
+        avg_price = orderPrice;
 
-          krwAccount.balance -= executed_funds + paid_fee;
-          if (coinAccount) {
-            const newTotalVolume = coinAccount.balance + executed_volume;
-            coinAccount.avg_buy_price =
-              (coinAccount.avg_buy_price * coinAccount.balance +
-                orderPrice * executed_volume) /
-              newTotalVolume;
-            coinAccount.balance = newTotalVolume;
-          }
-        } else {
-          console.log(
-            `[MockAPI] ${market} 지정가 매수 주문: 현재가(${currentMarketPrice})가 지정가(${orderPrice})보다 높아 미체결`
-          );
+        krwAccount.balance -= executed_funds + paid_fee;
+        if (coinAccount) {
+          const newTotalVolume = coinAccount.balance + executed_volume;
+          coinAccount.avg_buy_price =
+            (coinAccount.avg_buy_price * coinAccount.balance +
+              orderPrice * executed_volume) /
+            newTotalVolume;
+          coinAccount.balance = newTotalVolume;
         }
       } else {
         throw new Error("지원하지 않는 매수 주문 유형입니다.");
@@ -428,19 +422,13 @@ export class MockUpbitAPI extends UpbitAPI {
           throw new Error(
             `최소 주문 금액(${config.upbit.minOrderAmountKRW} KRW) 미만입니다.`
           );
-        if (currentMarketPrice >= orderPrice) {
-          executed_volume = orderVolume;
-          executed_funds = orderPrice * executed_volume;
-          paid_fee = executed_funds * feeRate;
-          avg_price = orderPrice;
+        executed_volume = orderVolume;
+        executed_funds = orderPrice * executed_volume;
+        paid_fee = executed_funds * feeRate;
+        avg_price = orderPrice;
 
-          coinAccount.balance -= executed_volume;
-          krwAccount.balance += executed_funds - paid_fee;
-        } else {
-          console.log(
-            `[MockAPI] ${market} 지정가 매도 주문: 현재가(${currentMarketPrice})가 지정가(${orderPrice})보다 낮아 미체결`
-          );
-        }
+        coinAccount.balance -= executed_volume;
+        krwAccount.balance += executed_funds - paid_fee;
       } else {
         throw new Error("지원하지 않는 매도 주문 유형입니다.");
       }

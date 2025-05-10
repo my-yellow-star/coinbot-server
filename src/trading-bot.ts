@@ -80,6 +80,7 @@ export class TradingBot {
 
     const initialKrw = this.portfolioManager.getKrwBalance();
     console.log(`초기 KRW 잔고: ${initialKrw.toFixed(0)} KRW`);
+    // 초기 포지션 로드 시 pyramidingCount도 함께 로드되도록 PortfolioManager 수정 필요 가정
     console.log("초기 보유 포지션:", this.portfolioManager.getAllPositions());
 
     this.interval = setInterval(async () => {
@@ -139,11 +140,14 @@ export class TradingBot {
         if (signal.action === "buy" && signal.price) {
           // signal.price는 매수 제안가(현재가)
           const krwBalance = this.portfolioManager.getKrwBalance();
+          const currentPosition = this.portfolioManager.getPosition(market);
           const investmentAmount =
             this.riskManager.determineInvestmentAmountForBuy(
               market,
               signal,
-              krwBalance
+              krwBalance,
+              currentPosition?.entryPrice, // 분할매수시 기준이 될 수 있는 현재 평균단가 전달 (선택적)
+              currentPosition?.volume // 분할매수시 기준이 될 수 있는 현재 보유량 전달 (선택적)
             );
 
           if (investmentAmount && investmentAmount > 0) {
@@ -178,7 +182,8 @@ export class TradingBot {
                   market,
                   averagePrice,
                   executedVolume,
-                  executedFunds + paidFee // 사용된 KRW = 체결금액 + 수수료
+                  executedFunds + paidFee, // 사용된 KRW = 체결금액 + 수수료
+                  signal.reason.includes("[분할매수]") // 분할매수 여부 전달
                 );
               } else {
                 console.log(

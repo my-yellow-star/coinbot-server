@@ -66,6 +66,18 @@ export const config = {
       buyScoreThresholdShortTerm: 80, // 단기 매매는 더 높은 점수 요구 가능
       sellScoreThresholdShortTerm: 65, // RSI 기반 매도 점수
 
+      // MACD 관련 파라미터 기본값
+      macdShortPeriod: 12,
+      macdLongPeriod: 26,
+      macdSignalPeriod: 9,
+
+      // 분할 매수 관련 파라미터 기본값
+      allowPyramiding: false, // 기본적으로 분할매수 비활성화
+      maxPyramidingCount: 2, // 최대 추가 매수 횟수
+      pyramidingConditionDropPercent: 5, // 기준가(첫매수가 또는 직전 분할매수가) 대비 5% 하락 시
+      pyramidingRsiCondition: { below: 40 }, // RSI 40 미만 시 추가 매수 조건 고려
+      pyramidingOrderSizeRatio: 1.0, // 첫 매수 주문량과 동일한 비율로 추가 매수
+
       // 점수 계산 가중치
       weights: {
         // 매수 관련
@@ -74,13 +86,20 @@ export const config = {
         volumeSpike: 25,
         rsiOversold: 20,
         rsiNeutral: 10, // RSI가 과매도도 과매수도 아닌 적정 범위일 때
+        buyMacdGoldenCross: 25, // MACD 골든크로스 가중치
+        buyMacdHistogramPositive: 15, // MACD 히스토그램 양전환/증가 가중치
         buySynergy: 15, // 주요 매수 조건 동시 충족 (예: EMA골든크로스 + BB상단돌파 + 거래량급증)
 
         // 매도 관련 (지표 기반)
         rsiOverboughtSell: 60, // RSI 과매수 시 기본 매도 고려 점수
         emaDeadCrossSell: 50, // EMA 데드크로스 시 기본 매도 고려 점수
+        sellMacdDeadCross: 25, // MACD 데드크로스 가중치
+        sellMacdHistogramNegative: 15, // MACD 히스토그램 음전환/감소 가중치
         sellSynergyRsiEma: 85, // RSI 과매수 + EMA 데드크로스 시너지 시 강력 매도 점수
         sellSynergyEmaBbMiddle: 80, // EMA 데드크로스 + BB중단선 하회 시 강력 매도 점수
+
+        // 분할매수 신호 발생 시 추가 점수
+        pyramidingSignalBoost: 10,
       },
     },
   },

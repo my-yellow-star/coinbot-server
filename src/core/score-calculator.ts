@@ -26,6 +26,7 @@ export class ScoreCalculator {
    * @param currentVolume 현재 거래량
    * @param avgVolume 평균 거래량
    * @param strategyCfg 전략 설정 객체
+   * @param macdResult MACD 결과
    * @returns ScoreOutput 점수와 판단 근거
    */
   public calculateBuyScore(
@@ -37,7 +38,12 @@ export class ScoreCalculator {
     rsi: number,
     currentVolume: number,
     avgVolume: number,
-    strategyCfg: StrategyConfig
+    strategyCfg: StrategyConfig,
+    macdResult: {
+      macdLine: number;
+      signalLine: number;
+      histogram: number;
+    } | null
   ): ScoreOutput {
     let score = 0;
     const reasons: string[] = [];
@@ -91,6 +97,25 @@ export class ScoreCalculator {
       reasons.push("주요 매수 조건 동시 충족(시너지)");
     }
 
+    // MACD 조건 (매수)
+    if (macdResult) {
+      const { macdLine, signalLine, histogram } = macdResult;
+      // MACD 골든 크로스
+      if (macdLine > signalLine) {
+        score += weights.buyMacdGoldenCross || 0;
+        reasons.push(
+          `MACD 골든크로스(L:${macdLine.toFixed(2)} > S:${signalLine.toFixed(
+            2
+          )})`
+        );
+      }
+      // MACD 히스토그램 양수
+      if (histogram > 0) {
+        score += weights.buyMacdHistogramPositive || 0;
+        reasons.push(`MACD 오실레이터 양수(${histogram.toFixed(2)})`);
+      }
+    }
+
     return { score, reasons };
   }
 
@@ -105,7 +130,12 @@ export class ScoreCalculator {
     emaMid: number,
     rsi: number,
     strategyCfg: StrategyConfig,
-    currentProfitRate: number | null // 수익률 (정보 제공용)
+    currentProfitRate: number | null, // 수익률 (정보 제공용)
+    macdResult: {
+      macdLine: number;
+      signalLine: number;
+      histogram: number;
+    } | null // MACD 결과 추가
   ): ScoreOutput {
     let score = 0;
     const reasons: string[] = [];
@@ -161,6 +191,33 @@ export class ScoreCalculator {
         `높은 수익률(${currentProfitRate.toFixed(1)}%) 매도 압력 지지`
       );
       score += 5; // 높은 수익률 상태에서 매도 신호 발생 시 점수 소폭 가산
+    }
+
+    // MACD 조건 (매도)
+    if (macdResult) {
+      const { macdLine, signalLine, histogram } = macdResult;
+      // MACD 데드 크로스
+      if (macdLine < signalLine) {
+        score = Math.max(score, weights.sellMacdDeadCross || 0); // 기존 점수와 비교하여 더 큰 값 사용
+        reasons.push(
+          `MACD 데드크로스(L:${macdLine.toFixed(2)} < S:${signalLine.toFixed(
+            2
+          )})`
+        );
+      }
+      // MACD 히스토그램 음수
+      if (histogram < 0) {
+        score = Math.max(score, weights.sellMacdHistogramNegative || 0);
+        reasons.push(`MACD 오실레이터 음수(${histogram.toFixed(2)})`);
+      }
+
+      // 시너지: RSI 과매수 + MACD 데드크로스
+      if (rsi > rsiOverboughtThreshold && macdLine < signalLine) {
+        score = Math.max(score, (weights.sellSynergyRsiEma || 0) + 10); // 기존 시너지 가중치에 추가 가점 (예시)
+        if (!reasons.includes("RSI 과매수 + MACD 데드크로스 시너지")) {
+          reasons.push("RSI 과매수 + MACD 데드크로스 시너지");
+        }
+      }
     }
 
     return { score, reasons };
