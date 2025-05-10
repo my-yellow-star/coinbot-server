@@ -4,7 +4,7 @@ async function main() {
   try {
     // 트레이딩 서버 생성 및 시작
     const tradingBot = new TradingBot(true, true);
-    await tradingBot.start();
+    // await tradingBot.start();
 
     // 웹 모니터링 서버 생성 및 시작
     const webServer = new WebServer(tradingBot, 8080);

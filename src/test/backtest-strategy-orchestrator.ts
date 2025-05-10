@@ -38,6 +38,14 @@ export class BacktestStrategyOrchestrator {
       rsiOversoldThreshold: config.rsiOversold,
       weights: config.weights || {},
       pyramidingRsiCondition: config.pyramidingRsiCondition || {},
+      stopLossPercentShortTerm:
+        config.stopLossPercent !== undefined
+          ? config.stopLossPercent * 100
+          : undefined,
+      profitTargetPercentShortTerm:
+        config.takeProfitPercent !== undefined
+          ? config.takeProfitPercent * 100
+          : undefined,
     };
     delete (coreConfig as any).rsiOverbought;
     delete (coreConfig as any).rsiOversold;
@@ -46,8 +54,6 @@ export class BacktestStrategyOrchestrator {
     delete (coreConfig as any).mfiOversold;
     delete (coreConfig as any).minTradeVolume;
     delete (coreConfig as any).maxTradeRatio;
-    delete (coreConfig as any).stopLossPercent;
-    delete (coreConfig as any).takeProfitPercent;
     delete (coreConfig as any).initialBalance;
     delete (coreConfig as any).printSignalDetails;
     delete (coreConfig as any).candleUnit;

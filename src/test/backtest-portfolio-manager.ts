@@ -136,6 +136,7 @@ export class BacktestPortfolioManager {
     const fee = amount * this.feeRate;
 
     const tradeUuid = order.uuid || uuidv4();
+    let tradeProfit: number | undefined = undefined;
 
     if (side === OrderSide.BID) {
       // 매수
@@ -166,13 +167,11 @@ export class BacktestPortfolioManager {
         // console.warn(`[BacktestPortfolioManager] Insufficient position to sell ${market}. Need: ${volume}, Have: ${position?.volume || 0}`);
         return null;
       }
-      this.currentBalance += amount - fee;
-
-      let tradeProfit: number | undefined = undefined;
-      // 평균 매수가가 있는 경우에만 수익 계산
       if (position.averageEntryPrice > 0) {
         tradeProfit = (price - position.averageEntryPrice) * volume - fee;
       }
+
+      this.currentBalance += amount - fee;
 
       position.volume -= volume;
       // 수량이 0이 되면 포지션 정리 (평균가 등 초기화)
@@ -195,12 +194,7 @@ export class BacktestPortfolioManager {
       amount,
       fee,
       timestamp: currentCandle.timestamp, // 현재 캔들의 타임스탬프 사용
-      profit:
-        side === OrderSide.ASK
-          ? (price - (this.positions.get(market)?.averageEntryPrice || price)) *
-              volume -
-            fee
-          : undefined,
+      profit: tradeProfit,
     };
     this.trades.push(newTrade);
 

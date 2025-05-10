@@ -9,6 +9,7 @@ import { DataManager } from "./core/data-manager";
 import { PortfolioManager } from "./core/portfolio-manager";
 import { OrderHistory } from "./types";
 import signalRoutes from "./routes/signal.routes";
+import backtestRoutes from "./routes/backtest.routes";
 
 export class WebServer {
   private app: express.Application;
@@ -270,6 +271,9 @@ export class WebServer {
         res.status(500).json({ error: errorMessage });
       }
     }) as RequestHandler);
+
+    // ADDED: Backtesting endpoint
+    this.app.use("/api/backtest", backtestRoutes);
 
     // 새로운 시그널 API 라우트 추가
     this.app.use("/api/signals", signalRoutes);
