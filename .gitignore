@@ -24,6 +24,7 @@ yarn-error.log*
 
 # testing
 /coverage
+/src/test/data
 
 # OS files
 .DS_Store

@@ -93,10 +93,12 @@ export class UpbitAPI {
   async getMinuteCandles(
     market: string,
     unit: number = 1,
-    count: number = 200
+    count: number = 200,
+    to?: string
   ): Promise<any[]> {
     const url = `${this.baseUrl}/candles/minutes/${unit}`;
-    const params = { market, count };
+    const params: Record<string, any> = { market, count };
+    if (to) params.to = to;
 
     try {
       const response = await axios.get(url, { params });
