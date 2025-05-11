@@ -80,7 +80,6 @@ export interface BacktestStrategySignal {
   action: "buy" | "sell" | "hold";
   market: string;
   price?: number; // 매수/매도 제안 가격 (지정가)
-  volume?: number; // 매수/매도 제안 수량
   reason?: string; // 신호 발생 이유
   score?: number; // 신호 점수 (옵션)
   // 필요한 경우 추가 지표 값 포함 가능
@@ -108,10 +107,16 @@ export interface BacktestStrategyConfig {
   stopLossPercent?: number; // 손절 비율 (0.05 = 5%)
   takeProfitPercent?: number; // 익절 비율
 
+  // 분할 매수 관련 파라미터
+  pyramidingOrderSizeRatio?: number; // 분할 매수 시 주문 크기 비율 (기본값 0.5 = 원래 포지션의 50%)
+  pyramidingRsiCondition?: { below?: number; above?: number }; // 분할 매수 RSI 조건
+  sellRatioOfPosition?: number; // 매도 시 포지션 대비 매도 비율
+
   feeRate?: number; // 거래 수수료율 (0.0005 = 0.05%)
   initialBalance?: number; // 초기 자본금
 
   // 기타 설정
   printSignalDetails?: boolean; // 신호 상세 정보 출력 여부
+  weights?: any; // 전략 가중치
   [key: string]: any; // 유연성을 위한 추가 설정
 }

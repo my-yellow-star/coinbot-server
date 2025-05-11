@@ -2,6 +2,7 @@ import { BacktestDataManager } from "./backtest-data-manager";
 import { BacktestPortfolioManager } from "./backtest-portfolio-manager";
 import { MockOrderExecutor } from "./mock-order-executor";
 import { BacktestStrategyOrchestrator } from "./backtest-strategy-orchestrator";
+import { BacktestRiskManager } from "./backtest-risk-manager";
 import {
   BacktestStrategyConfig,
   BacktestTrade,
@@ -64,6 +65,7 @@ export class Backtester {
   private indicatorCalculator: IndicatorCalculator;
   private signalGenerator: SignalGenerator;
   private strategyOrchestrator: BacktestStrategyOrchestrator;
+  private riskManager: BacktestRiskManager;
   private strategyConfig: BacktestStrategyConfig;
 
   constructor(customConfig?: Partial<BacktestStrategyConfig>) {
@@ -83,70 +85,8 @@ export class Backtester {
       this.signalGenerator,
       this.portfolioManager
     );
+    this.riskManager = new BacktestRiskManager(this.portfolioManager);
     console.log("[Backtester] Initialized with config:", this.strategyConfig);
-  }
-
-  private calculateTradeVolume(
-    market: string,
-    currentPrice: number,
-    action: "buy" | "sell",
-    config: BacktestStrategyConfig
-  ): number {
-    const maxTradeRatio = config.maxTradeRatio || 0.25;
-    const minTradeVolumeAsset = config.minTradeVolume || 0.0001;
-    const minTradeValueKRW = 5000;
-    const feeRate = config.feeRate || 0.0005;
-
-    if (action === "buy") {
-      const availableBalance = this.portfolioManager.getCurrentBalance();
-      const maxSpendable = availableBalance / (1 + feeRate);
-
-      if (maxSpendable < minTradeValueKRW) {
-        return 0;
-      }
-
-      let targetSpend = maxSpendable * maxTradeRatio;
-      if (targetSpend < minTradeValueKRW) {
-        targetSpend = minTradeValueKRW;
-      }
-
-      let volume = targetSpend / currentPrice;
-
-      if (volume < minTradeVolumeAsset) {
-        const costForMinAssetVolume = minTradeVolumeAsset * currentPrice;
-        if (
-          costForMinAssetVolume >= minTradeValueKRW &&
-          costForMinAssetVolume * (1 + feeRate) <= maxSpendable
-        ) {
-          volume = minTradeVolumeAsset;
-        } else {
-          return 0;
-        }
-      }
-      return volume;
-    } else {
-      const position = this.portfolioManager.getPosition(market);
-      if (position && position.volume > 0) {
-        let volumeToSell =
-          position.volume * (config.sellRatioOfPosition || 1.0);
-
-        if (
-          volumeToSell < minTradeVolumeAsset ||
-          volumeToSell * currentPrice < minTradeValueKRW
-        ) {
-          if (
-            position.volume >= minTradeVolumeAsset &&
-            position.volume * currentPrice >= minTradeValueKRW
-          ) {
-            volumeToSell = position.volume;
-          } else {
-            return 0;
-          }
-        }
-        return volumeToSell;
-      }
-      return 0;
-    }
   }
 
   public async run(
@@ -219,19 +159,18 @@ export class Backtester {
       );
 
       let tradeExecuted: BacktestTrade | null = null;
-      let volumeToTrade = signal.volume;
+      let volumeToTrade = 0;
 
       if (signal.action === "buy") {
-        if (!volumeToTrade || volumeToTrade <= 0) {
-          volumeToTrade = this.calculateTradeVolume(
-            market,
-            currentCandle.trade_price,
-            "buy",
-            currentRunConfig
-          );
-        }
+        // RiskManager를 사용하여 매수 수량 계산
+        volumeToTrade = this.riskManager.calculateBuyVolume(
+          market,
+          signal,
+          currentCandle.trade_price,
+          currentRunConfig
+        );
 
-        if (volumeToTrade && volumeToTrade > 0) {
+        if (volumeToTrade > 0) {
           buySignals++;
           const order: BacktestOrder = {
             market,
@@ -251,20 +190,15 @@ export class Backtester {
         if (!currentPosition || currentPosition.volume <= 0) {
           holdSignals++;
         } else {
-          if (!volumeToTrade || volumeToTrade <= 0) {
-            volumeToTrade = this.calculateTradeVolume(
-              market,
-              currentCandle.trade_price,
-              "sell",
-              currentRunConfig
-            );
-          }
+          // RiskManager를 사용하여 매도 수량 계산
+          volumeToTrade = this.riskManager.calculateSellVolume(
+            market,
+            signal,
+            currentCandle.trade_price,
+            currentRunConfig
+          );
 
-          if (volumeToTrade && volumeToTrade > currentPosition.volume) {
-            volumeToTrade = currentPosition.volume;
-          }
-
-          if (volumeToTrade && volumeToTrade > 0) {
+          if (volumeToTrade > 0) {
             sellSignals++;
             const order: BacktestOrder = {
               market,
@@ -439,4 +373,4 @@ async function runBacktest() {
 }
 
 // 스크립트로 직접 실행 시 아래 주석 해제
-runBacktest().catch(console.error);
+// runBacktest().catch(console.error);

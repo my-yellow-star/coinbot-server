@@ -66,10 +66,9 @@ export interface Trade {
 export interface StrategyResult {
   action: "buy" | "sell" | "hold";
   market: string;
-  score?: number; // 점수 (매수/매도 결정 강도 등)
+  score: number; // 점수 (매수/매도 결정 강도 등)
   reason: string;
   price?: number; // 주문 실행 시 제안 가격 (지정가 등)
-  volume?: number; // 주문 실행 시 제안 수량
 }
 
 // 포지션 정보 타입
@@ -128,7 +127,6 @@ export interface StrategyConfig {
   pyramidingOrderSizeRatio?: number; // 추가 매수 시 주문량 비율 (첫 매수량 대비 또는 현재 보유량 대비)
 
   weights?: StrategyWeights; // 점수 계산 가중치
-  // ... 기타 필요한 전략 파라미터
 }
 
 // 점수 계산 가중치 타입
@@ -150,9 +148,12 @@ export interface StrategyWeights {
   sellMacdHistogramNegative?: number; // MACD 히스토그램 음전환 또는 감소
   sellSynergyRsiEma?: number; // RSI 과매수 + EMA 데드크로스 시너지
   sellSynergyEmaBbMiddle?: number; // EMA 데드크로스 + BB중단 하회 시너지
+  profitTargetWeight?: number; // 목표 수익률 달성 가중치
 
   // 분할매수 신호 발생 시 추가 점수 (선택적)
   pyramidingSignalBoost?: number;
+  // 추세 추종 추가 매수 신호 발생 시 추가 점수 (선택적)
+  trendFollowingSignalBoost?: number;
   // 필요시 추가 가중치 정의
 }
 

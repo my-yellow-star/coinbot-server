@@ -1,0 +1,52 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main # 또는 배포를 원하는 브랜치 이름으로 변경하세요.
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18" # 프로젝트에 맞는 Node.js 버전으로 변경하세요.
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          PROJECT_DIR_ON_EC2: "/home/${{ secrets.EC2_USER }}/coinbot-server"
+          PM2_APP_NAME: "coinbot-server"
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            cd ${{ env.PROJECT_DIR_ON_EC2 }}
+
+            git pull origin master
+
+            echo "Installing dependencies..."
+            npm install --only=production # 또는 npm ci --only=production
+
+            echo "Building project..."
+            npm run build
+
+            echo "Restarting application with PM2..."
+            pm2 reload ${{ env.PM2_APP_NAME }} || pm2 start dist/index.js --name ${{ env.PM2_APP_NAME }} # PM2 실행/재시작 명령어 (프로젝트 구조에 맞게 수정)
+
+            echo "Deployment finished."
+          EOF

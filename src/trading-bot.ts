@@ -52,7 +52,7 @@ export class TradingBot {
       this.upbitAPI
     );
     this.signalGenerator = new SignalGenerator(this.indicatorCalculator);
-    this.riskManager = new RiskManager(this.dataManager); // PortfolioManager도 주입 가능
+    this.riskManager = new RiskManager(this.portfolioManager);
     this.orderExecutor = new OrderExecutor(this.upbitAPI);
 
     // Strategy Orchestrator 초기화
@@ -139,16 +139,8 @@ export class TradingBot {
 
         if (signal.action === "buy" && signal.price) {
           // signal.price는 매수 제안가(현재가)
-          const krwBalance = this.portfolioManager.getKrwBalance();
-          const currentPosition = this.portfolioManager.getPosition(market);
           const investmentAmount =
-            this.riskManager.determineInvestmentAmountForBuy(
-              market,
-              signal,
-              krwBalance,
-              currentPosition?.entryPrice, // 분할매수시 기준이 될 수 있는 현재 평균단가 전달 (선택적)
-              currentPosition?.volume // 분할매수시 기준이 될 수 있는 현재 보유량 전달 (선택적)
-            );
+            this.riskManager.determineInvestmentAmountForBuy(market, signal);
 
           if (investmentAmount && investmentAmount > 0) {
             console.log(
@@ -197,8 +189,7 @@ export class TradingBot {
               `[${market}] 매수 조건 충족했으나, 투자 금액 결정 불가 또는 0원.`
             );
           }
-        } else if (signal.action === "sell" && signal.volume && signal.price) {
-          // signal.volume은 매도 제안 수량, signal.price는 제안 가격
+        } else if (signal.action === "sell" && signal.price) {
           const currentPosition = this.portfolioManager.getPosition(market);
           if (currentPosition && currentPosition.volume > 0) {
             const sellVolume = this.riskManager.determineOrderVolumeForSell(
@@ -254,8 +245,6 @@ export class TradingBot {
               `[${market}] 매도 신호 발생했으나, 해당 코인 보유 수량 없음.`
             );
           }
-        } else if (signal.action === "hold") {
-          // console.log(`[${market}] 관망 결정: ${signal.reason}`);
         }
       } catch (error) {
         console.error(`[${market}] 거래 주기 중 해당 마켓 처리 오류:`, error);

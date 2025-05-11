@@ -1,6 +1,6 @@
-import { Account, Order, Position, StrategyResult } from "../types"; // Position, StrategyResult 등 타입 정의 필요
-import { DataManager } from "./data-manager";
+import { Position, StrategyResult } from "../types"; // Position, StrategyResult 등 타입 정의 필요
 import { config } from "../config";
+import { PortfolioManager } from "./portfolio-manager";
 
 /**
  * @class RiskManager
@@ -8,97 +8,138 @@ import { config } from "../config";
  *              전반적인 리스크 관리 정책을 수행합니다.
  */
 export class RiskManager {
-  private dataManager: DataManager;
-  // private portfolioManager: PortfolioManager; // 포트폴리오 전체 상황 고려 시 필요
+  private portfolioManager: PortfolioManager;
 
-  constructor(dataManager: DataManager) {
-    this.dataManager = dataManager;
+  constructor(portfolioManager: PortfolioManager) {
+    this.portfolioManager = portfolioManager;
   }
 
   /**
    * 매수 신호에 따라 실제 투자할 금액 또는 수량을 결정합니다.
+   * 신호 점수(0~100)에 따라 투자 금액이 선형적으로 증가합니다.
    * @param market 마켓 코드
    * @param signal 매수 신호 정보 (SignalGenerator로부터 받음)
-   * @param currentPrice 현재 가격 (SignalGenerator의 signal.price 사용 가능)
    * @param krwBalance 현재 보유 KRW 잔액
+   * @param currentEntryPrice 분할매수 시 현재 포지션의 평균단가
+   * @param currentVolume 분할매수 시 현재 포지션의 보유량
    * @returns 주문에 사용할 투자 금액 또는 null (주문 불가 시)
    */
   determineInvestmentAmountForBuy(
     market: string,
-    signal: StrategyResult, // signal.price 에 매수 희망 가격(현재가) 포함 가정
-    krwBalance: number,
-    currentEntryPrice?: number, // 분할매수 시 현재 포지션의 평균단가
-    currentVolume?: number // 분할매수 시 현재 포지션의 보유량
+    signal: StrategyResult // signal.price 에 매수 희망 가격(현재가) 포함 가정
   ): number | null {
-    let investmentAmount = 0;
+    const krwBalance = this.portfolioManager.getKrwBalance();
+    const currentEntryPrice =
+      this.portfolioManager.getPosition(market)?.entryPrice;
+    const currentVolume = this.portfolioManager.getPosition(market)?.volume;
+
+    // 보유 KRW의 최대 25%까지만 투자 가능
+    const MAX_INVESTMENT_PERCENTAGE =
+      config.trading.maxTradeBalancePercentage || 25;
+    const minInvestmentAmount = config.upbit.minOrderAmountKRW || 5000;
+    const maxInvestmentAmount = Math.max(
+      minInvestmentAmount,
+      krwBalance * (MAX_INVESTMENT_PERCENTAGE / 100)
+    );
+
+    // 분할매수 여부 확인
     const isPyramiding = signal.reason.includes("[분할매수]");
+
+    // 기본 투자 금액 계산
+    let baseInvestmentAmount = 0;
 
     if (isPyramiding) {
       // 분할 매수 로직
       if (currentEntryPrice && currentVolume && currentVolume > 0) {
-        // 예시: 첫 매수 금액(config.trading.tradeAmount) 기준으로 pyramidingOrderSizeRatio 만큼 투자
-        // 또는 현재 포지션 가치 (currentEntryPrice * currentVolume)의 일정 비율 등 다양한 방식 가능
-        // 여기서는 단순하게 첫 매수 기준 금액을 따름
-        investmentAmount =
-          config.trading.tradeAmount *
-          (config.trading.defaultStrategyConfig.pyramidingOrderSizeRatio ||
-            1.0);
+        // 분할매수 기본 금액 계산
+        const pyramidingRatio =
+          config.trading.defaultStrategyConfig.pyramidingOrderSizeRatio || 0.5;
+
+        // 스코어를 기반으로 분할매수 비율 조정 (50%~100% 범위)
+        const scoreAdjustmentRatio = 0.5 + signal.score / 200; // 50%~100% 비율
+        const adjustedRatio = pyramidingRatio * scoreAdjustmentRatio;
+
+        // 현재 포지션 가치 기준으로 투자 금액 계산
+        const currentPositionValue = currentEntryPrice * currentVolume;
+        baseInvestmentAmount = currentPositionValue * adjustedRatio;
+
         console.log(
-          `[${market}] 분할매수 투자금액 계산: ${investmentAmount.toFixed(
+          `[${market}] 분할매수 투자금액 계산: 기준금액 ${currentPositionValue.toFixed(
             0
-          )} KRW (기준금액: ${config.trading.tradeAmount}, 비율: ${
-            config.trading.defaultStrategyConfig.pyramidingOrderSizeRatio || 1.0
-          })`
+          )} KRW의 ${(adjustedRatio * 100).toFixed(
+            1
+          )}% = ${baseInvestmentAmount.toFixed(0)} KRW (점수: ${signal.score})`
         );
       } else {
         console.warn(
           `[${market}] 분할매수 신호이나, 현재 포지션 정보(평균단가/수량) 부족으로 투자금액 계산 불가. 신규 매수 로직으로 fallback.`
         );
-        // fallback 또는 오류 처리
-        investmentAmount = config.trading.tradeAmount; // 고정 금액 투자 (신규 매수와 동일하게 처리)
+        baseInvestmentAmount = config.trading.tradeAmount; // 고정 금액 투자 (신규 매수와 동일하게 처리)
       }
     } else {
-      // 신규 매수 로직
-      investmentAmount = config.trading.tradeAmount; // 고정 금액 투자
-      if (config.trading.useBalancePercentage) {
-        const calculatedAmount =
-          krwBalance * (config.trading.balancePercentageToInvest / 100);
-        investmentAmount = Math.max(
-          calculatedAmount,
-          config.trading.tradeAmount
-        );
+      // 신규 매수 로직 - 점수(0~100)에 따라 최소~최대 금액 선형 증가
+      if (signal.score <= 0) {
+        baseInvestmentAmount = minInvestmentAmount;
+      } else if (signal.score >= 100) {
+        baseInvestmentAmount = maxInvestmentAmount;
+      } else {
+        // 점수에 따라 투자 금액 선형 증가 (0점 -> 최소금액, 100점 -> 최대금액)
+        baseInvestmentAmount =
+          minInvestmentAmount +
+          (maxInvestmentAmount - minInvestmentAmount) * (signal.score / 100);
       }
-    }
 
-    if (investmentAmount > krwBalance) {
-      console.warn(
-        `[${market}] 투자 예정 금액(${investmentAmount} KRW)이 보유 KRW(${krwBalance} KRW)보다 많습니다. 보유 KRW로 조정합니다.`
+      console.log(
+        `[${market}] 신규매수 투자금액 계산: ${baseInvestmentAmount.toFixed(
+          0
+        )} KRW (점수: ${
+          signal.score
+        }, 범위: ${minInvestmentAmount}~${maxInvestmentAmount})`
       );
-      investmentAmount = krwBalance;
     }
 
-    if (investmentAmount < config.upbit.minOrderAmountKRW) {
+    // 투자 금액이 최대 한도를 넘지 않도록 조정
+    let finalInvestmentAmount = Math.min(
+      baseInvestmentAmount,
+      maxInvestmentAmount
+    );
+
+    // 보유 KRW보다 크면 조정
+    if (finalInvestmentAmount > krwBalance) {
       console.warn(
-        `[${market}] 최종 투자 예정 금액(${investmentAmount} KRW)이 최소 주문 금액(${config.upbit.minOrderAmountKRW} KRW)보다 작습니다.`
+        `[${market}] 투자 예정 금액(${finalInvestmentAmount.toFixed(
+          0
+        )} KRW)이 보유 KRW(${krwBalance.toFixed(
+          0
+        )} KRW)보다 많습니다. 보유 KRW로 조정합니다.`
+      );
+      finalInvestmentAmount = krwBalance;
+    }
+
+    // 최소 주문 금액 확인
+    if (finalInvestmentAmount < minInvestmentAmount) {
+      console.warn(
+        `[${market}] 최종 투자 예정 금액(${finalInvestmentAmount.toFixed(
+          0
+        )} KRW)이 최소 주문 금액(${minInvestmentAmount} KRW)보다 작습니다.`
       );
       return null;
     }
 
-    // OrderExecutor가 이 금액으로 시장가 매수(금액)를 하거나,
-    // 이 금액과 signal.price를 바탕으로 지정가 매수(수량)를 계산하여 실행
-    return investmentAmount;
+    return finalInvestmentAmount;
   }
 
   /**
    * 매도 신호 또는 손절/익절 조건에 따라 매도할 수량을 결정합니다.
+   * 신호 점수(0~100)에 따라 매도 수량이 결정됩니다.
    * @param market 마켓 코드
-   * @param signal 매도 신호 정보 (signal.volume에 전체 매도 수량 포함 가정)
+   * @param signal 매도 신호 정보
    * @param currentPosition 현재 보유 포지션
    * @returns 매도할 수량 또는 null (매도 불가 시)
    */
   determineOrderVolumeForSell(
     market: string,
-    signal: StrategyResult, // signal.volume에 매도 희망 수량(보통 전체) 포함 가정
+    signal: StrategyResult,
     currentPosition: Position | null
   ): number | null {
     if (!currentPosition || currentPosition.volume <= 0) {
@@ -106,30 +147,54 @@ export class RiskManager {
       return null;
     }
 
-    // SignalGenerator에서 이미 매도 수량을 결정해서 signal.volume에 넣어주는 것을 가정
-    // (예: currentPosition.volume)
-    if (signal.action === "sell" && signal.volume && signal.volume > 0) {
-      // 보유 수량 초과 매도 방지
-      return Math.min(signal.volume, currentPosition.volume);
+    // 손절 신호인 경우 전량 매도
+    if (signal.reason.includes("[단기 손절]")) {
+      console.log(
+        `[${market}] 손절 신호로 전량 매도 실행 (${currentPosition.volume})`
+      );
+      return currentPosition.volume;
     }
 
-    // 기본적으로 보유 수량 전체 매도 (SignalGenerator가 volume 안줬을때 fallback)
-    // console.warn(`[${market}] SignalGenerator가 매도 수량을 제공하지 않아 전체 수량 매도 시도.`);
-    // return currentPosition.volume;
-    // 또는 오류 처리
-    console.error(`[${market}] 매도 신호에 매도 수량(volume) 정보가 없습니다.`);
-    return null;
-  }
+    // 익절 신호인 경우 전량 또는 일부 매도 (점수에 따라)
+    if (signal.reason.includes("[단기 익절]")) {
+      // 높은 점수(80 이상)는 전량 매도, 낮은 점수는 일부 매도
+      const sellRatio = Math.max(0.5, signal.score / 100); // 최소 50%는 매도
+      const sellVolume = currentPosition.volume * sellRatio;
 
-  // 포지션 추가/제거/조회 로직 (PortfolioManager로 이동 고려)
-  // private positions: Map<string, Position> = new Map();
-  // addPosition(market: string, price: number, volume: number): void {
-  //   this.positions.set(market, { entryPrice: price, volume });
-  // }
-  // removePosition(market: string): void {
-  //   this.positions.delete(market);
-  // }
-  // getPosition(market: string): Position | null {
-  //   return this.positions.get(market) || null;
-  // }
+      console.log(
+        `[${market}] 익절 신호로 ${(sellRatio * 100).toFixed(
+          0
+        )}% 매도 실행 (${sellVolume.toFixed(8)} / ${
+          currentPosition.volume
+        }) (점수: ${signal.score})`
+      );
+      return sellVolume;
+    }
+
+    // 일반 매도 신호의 경우 점수에 따라 매도 비율 결정 (60~100: 비율 계산, <60: 최소 매도)
+    if (signal.score >= 60) {
+      // 60~100점 사이에서 매도 비율을 60%~100%로 선형 증가
+      const sellRatio = 0.6 + (signal.score - 60) / 100; // 60%~100% 범위
+      const sellVolume = currentPosition.volume * sellRatio;
+
+      console.log(
+        `[${market}] 매도 신호 강도에 따라 ${(sellRatio * 100).toFixed(
+          0
+        )}% 매도 (${sellVolume.toFixed(8)} / ${
+          currentPosition.volume
+        }) (점수: ${signal.score})`
+      );
+      return sellVolume;
+    } else {
+      // 낮은 점수의 매도 신호는 30% 정도만 매도
+      const sellVolume = currentPosition.volume * 0.3;
+
+      console.log(
+        `[${market}] 약한 매도 신호로 30% 부분 매도 (${sellVolume.toFixed(
+          8
+        )} / ${currentPosition.volume}) (점수: ${signal.score})`
+      );
+      return sellVolume;
+    }
+  }
 }

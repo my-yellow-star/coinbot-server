@@ -101,7 +101,6 @@ export class TradingStrategyOrchestrator {
         );
         if (signal.price)
           console.log(`  - 제안 가격: ${signal.price.toFixed(2)}`);
-        if (signal.volume) console.log(`  - 제안 수량: ${signal.volume}`);
       }
 
       return signal;

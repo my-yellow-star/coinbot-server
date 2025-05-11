@@ -125,7 +125,6 @@ export class BacktestStrategyOrchestrator {
         action: coreSignal.action,
         market: coreSignal.market,
         price: coreSignal.price,
-        volume: coreSignal.volume,
         reason: coreSignal.reason,
         score: coreSignal.score,
       };
@@ -149,8 +148,7 @@ export class BacktestStrategyOrchestrator {
             `Price: ${currentPrice}, Position: ${positionInfo}, Signal: ${backtestSignal.action.toUpperCase()}, ` +
             `Reason: ${backtestSignal.reason || "N/A"}, Score: ${
               backtestSignal.score?.toFixed(2) || "N/A"
-            }, ` +
-            `ProposedVol: ${backtestSignal.volume || "N/A"}`
+            }`
         );
       }
 

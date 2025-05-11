@@ -17,9 +17,7 @@ export const config = {
   trading: {
     // 기존 설정 유지 또는 새로운 퍼센트 기반으로 변경
     tradeAmount: 5200, // 1회 기본 거래 금액 (KRW), 최소 주문 금액 이상이어야 함.
-    useBalancePercentage: false, // KRW 잔액의 %를 투자할지 여부
-    balancePercentageToInvest: 10, // 투자할 잔액 비율 (%)
-
+    maxTradeBalancePercentage: 25, // 최대 거래 금액 비율 (%)
     interval: parseInt(process.env.TRADING_INTERVAL || "300000"), // 봇 실행 간격 (밀리초) - 기본값 5분
     delayBetweenMarkets: 150, // 개별 마켓 처리 사이 지연 (ms)
 
@@ -39,10 +37,6 @@ export const config = {
       "KRW-EGLD",
       "KRW-PYTH",
     ], // 거래 대상 마켓 리스트
-
-    // 익절/손절 기준 (순수 퍼센트 값, 예: 3% 익절이면 3.0)
-    profitTargetPercent: 2.0, // 목표 수익률 (%)
-    stopLossPercent: 1.0, // 손절률 (%)
 
     printStrategy: process.env.PRINT_STRATEGY === "true", // 전략 출력 여부
 
